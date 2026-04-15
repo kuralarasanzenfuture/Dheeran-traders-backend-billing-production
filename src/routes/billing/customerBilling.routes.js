@@ -40,7 +40,7 @@ router.get("/next-invoice-number", getNextInvoiceNumber);
 
 router.get("/:id", getCustomerBillingById);
 
-router.put("/:id", protect, verifyAdminPassword, updateCustomerBilling);
+router.put("/:id", protect, updateCustomerBilling);
 router.delete("/:id", protect, verifyAdminPassword,  deleteCustomerBilling);
 
 export default router;
