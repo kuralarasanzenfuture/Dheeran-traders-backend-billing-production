@@ -30,7 +30,7 @@ import path from "path";
 
 //     /* 3️⃣ CHECK: Account already exists or not */
 //     const [existingAccount] = await db.query(
-//       `SELECT id FROM company_bank_details 
+//       `SELECT id FROM company_bank_details
 //        WHERE bank_name = ? AND account_number = ?`,
 //       [bank_name, account_number]
 //     );
@@ -82,12 +82,11 @@ import path from "path";
 //   }
 // };
 
-
 /* 📄 GET ALL */
 export const getCompanyBanks = async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT * FROM company_bank_details ORDER BY created_at DESC"
+      "SELECT * FROM company_bank_details ORDER BY created_at DESC",
     );
     res.json(rows);
   } catch (err) {
@@ -101,7 +100,7 @@ export const getCompanyBankById = async (req, res) => {
   try {
     const [rows] = await db.query(
       "SELECT * FROM company_bank_details WHERE id = ?",
-      [req.params.id]
+      [req.params.id],
     );
 
     if (!rows.length) {
@@ -159,15 +158,12 @@ export const getCompanyBankById = async (req, res) => {
 //   }
 // };
 
-
-
 // export const deleteCompanyBank = async (req, res) => {
 // try {
 // const [rows] = await db.query(
 // "SELECT qr_code_image FROM company_bank_details WHERE id = ?",
 // [req.params.id]
 // );
-
 
 // if (!rows.length) {
 // return res.status(404).json({ message: "Bank not found" });
@@ -179,7 +175,6 @@ export const getCompanyBankById = async (req, res) => {
 // rows[0].qr_code_image.replace(/^\/+/, "")
 // );
 
-
 // try {
 // await fs.unlink(imgPath);
 // } catch (err) {
@@ -187,11 +182,9 @@ export const getCompanyBankById = async (req, res) => {
 // }
 // }
 
-
 // await db.query("DELETE FROM company_bank_details WHERE id = ?", [
 // req.params.id,
 // ]);
-
 
 // res.json({ message: "Company bank deleted successfully" });
 // } catch (err) {
@@ -201,7 +194,6 @@ export const getCompanyBankById = async (req, res) => {
 // };
 
 /*----------------------------------------------------------------------*/
-
 
 /* ================= CREATE ================= */
 // export const createCompanyBank = async (req, res) => {
@@ -240,7 +232,7 @@ export const getCompanyBankById = async (req, res) => {
 //     /* ========= DUPLICATE ========= */
 
 //     const [exists] = await conn.query(
-//       `SELECT id FROM company_bank_details 
+//       `SELECT id FROM company_bank_details
 //        WHERE account_number=? AND ifsc_code=?`,
 //       [account_number, ifsc_code]
 //     );
@@ -252,8 +244,8 @@ export const getCompanyBankById = async (req, res) => {
 //     /* ========= PRIMARY LOGIC ========= */
 
 //     const [[row]] = await conn.query(
-//       `SELECT COUNT(*) as count 
-//        FROM company_bank_details 
+//       `SELECT COUNT(*) as count
+//        FROM company_bank_details
 //        WHERE is_primary=1 FOR UPDATE`
 //     );
 
@@ -327,11 +319,19 @@ export const createCompanyBank = async (req, res) => {
       throw new Error("Invalid status");
     }
 
+    if (typeof is_primary !== "boolean") {
+      throw new Error("is_primary must be a boolean");
+    }
+
+    if (status === "inactive" && is_primary) {
+      throw new Error("Inactive bank cannot be primary");
+    }
+
     /* normalize */
     is_primary = is_primary === true || is_primary === "true";
 
     /* ❗ optional rule */
-    if (status === "inactive" && is_primary) {
+    if (status === "inactive" && is_primary === true) {
       throw new Error("Inactive bank cannot be primary");
     }
 
@@ -340,7 +340,7 @@ export const createCompanyBank = async (req, res) => {
     const [exists] = await conn.query(
       `SELECT id FROM company_bank_details 
        WHERE account_number=? AND ifsc_code=?`,
-      [account_number, ifsc_code]
+      [account_number, ifsc_code],
     );
 
     if (exists.length) throw new Error("Bank already exists");
@@ -352,7 +352,7 @@ export const createCompanyBank = async (req, res) => {
     const [[row]] = await conn.query(
       `SELECT COUNT(*) as count 
        FROM company_bank_details 
-       WHERE is_primary=1 FOR UPDATE`
+       WHERE is_primary=1 FOR UPDATE`,
     );
 
     let final_is_primary = 0;
@@ -382,7 +382,7 @@ export const createCompanyBank = async (req, res) => {
         qr_code_image,
         status,
         final_is_primary,
-      ]
+      ],
     );
 
     await conn.commit();
@@ -392,7 +392,6 @@ export const createCompanyBank = async (req, res) => {
       id: result.insertId,
       is_primary: !!final_is_primary,
     });
-
   } catch (err) {
     await conn.rollback();
     res.status(400).json({ message: err.message });
@@ -412,7 +411,7 @@ export const updateCompanyBank = async (req, res) => {
 
     const [[oldData]] = await conn.query(
       `SELECT * FROM company_bank_details WHERE id=? FOR UPDATE`,
-      [id]
+      [id],
     );
 
     if (!oldData) throw new Error("Bank not found");
@@ -442,10 +441,14 @@ export const updateCompanyBank = async (req, res) => {
           account_number || oldData.account_number,
           ifsc_code || oldData.ifsc_code,
           id,
-        ]
+        ],
       );
 
       if (exists.length) throw new Error("Duplicate bank account");
+    }
+
+    if (status === "inactive" && is_primary === true) {
+      throw new Error("Inactive bank cannot be primary");
     }
 
     /* ========= PRIMARY LOGIC ========= */
@@ -456,7 +459,7 @@ export const updateCompanyBank = async (req, res) => {
 
     if (is_primary === false && oldData.is_primary) {
       const [[count]] = await conn.query(
-        `SELECT COUNT(*) as count FROM company_bank_details WHERE is_primary=1`
+        `SELECT COUNT(*) as count FROM company_bank_details WHERE is_primary=1`,
       );
 
       if (count.count === 1) {
@@ -497,18 +500,15 @@ export const updateCompanyBank = async (req, res) => {
         ifsc_code ?? oldData.ifsc_code,
         branch ?? oldData.branch,
         status ?? oldData.status,
-        is_primary !== undefined
-          ? is_primary ? 1 : 0
-          : oldData.is_primary,
+        is_primary !== undefined ? (is_primary ? 1 : 0) : oldData.is_primary,
         qr_code_image,
         id,
-      ]
+      ],
     );
 
     await conn.commit();
 
     res.json({ message: "Bank updated successfully" });
-
   } catch (err) {
     await conn.rollback();
     res.status(400).json({ message: err.message });
@@ -528,7 +528,7 @@ export const deleteCompanyBank = async (req, res) => {
 
     const [[bank]] = await conn.query(
       `SELECT * FROM company_bank_details WHERE id=? FOR UPDATE`,
-      [id]
+      [id],
     );
 
     if (!bank) throw new Error("Bank not found");
@@ -538,7 +538,7 @@ export const deleteCompanyBank = async (req, res) => {
     }
 
     const [[count]] = await conn.query(
-      `SELECT COUNT(*) as count FROM company_bank_details`
+      `SELECT COUNT(*) as count FROM company_bank_details`,
     );
 
     if (count.count === 1) {
@@ -549,7 +549,7 @@ export const deleteCompanyBank = async (req, res) => {
     if (bank.qr_code_image) {
       const imgPath = path.resolve(
         process.cwd(),
-        bank.qr_code_image.replace(/^\/+/, "")
+        bank.qr_code_image.replace(/^\/+/, ""),
       );
 
       if (fs.existsSync(imgPath)) {
@@ -562,7 +562,6 @@ export const deleteCompanyBank = async (req, res) => {
     await conn.commit();
 
     res.json({ message: "Bank deleted successfully" });
-
   } catch (err) {
     await conn.rollback();
     res.status(400).json({ message: err.message });
@@ -582,7 +581,7 @@ export const setPrimaryBank = async (req, res) => {
 
     const [[bank]] = await conn.query(
       `SELECT * FROM company_bank_details WHERE id=? FOR UPDATE`,
-      [id]
+      [id],
     );
 
     if (!bank) throw new Error("Bank not found");
@@ -599,13 +598,12 @@ export const setPrimaryBank = async (req, res) => {
 
     await conn.query(
       `UPDATE company_bank_details SET is_primary=1 WHERE id=?`,
-      [id]
+      [id],
     );
 
     await conn.commit();
 
     res.json({ message: "Primary bank updated successfully" });
-
   } catch (err) {
     await conn.rollback();
     res.status(400).json({ message: err.message });

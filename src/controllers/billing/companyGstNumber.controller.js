@@ -67,7 +67,15 @@ export const createGST = async (req, res) => {
 
     let { gst_number, is_default, is_active } = req.body;
 
+    is_active = Number(is_active);
+
     if (!gst_number) throw new Error("GST number required");
+
+    if (is_active === false) {
+      if (is_default === true) {
+        throw new Error("Cannot set default to false");
+      }
+    }
 
     gst_number = gst_number.toUpperCase().trim();
 
@@ -155,6 +163,12 @@ export const updateGST = async (req, res) => {
     );
 
     if (!gst) throw new Error("GST not found");
+
+    if (is_active === false) {
+      if (is_default === true) {
+        throw new Error("Cannot set default to false");
+      }
+    }
 
     /* Normalize values */
     is_default = is_default === true || is_default === "true";
@@ -270,6 +284,14 @@ export const setDefaultGST = async (req, res) => {
     );
 
     if (!gst) throw new Error("GST not found");
+
+    if (gst.is_default) {
+      return res.json({ message: "Already default" });
+    }
+
+    if (!gst.is_active) {
+      throw new Error("Cannot set inactive GST as default");
+    }
 
     /* Reset all */
     await conn.query(`UPDATE company_gst_number SET is_default=0`);
