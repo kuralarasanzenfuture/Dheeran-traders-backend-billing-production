@@ -17,6 +17,7 @@ import vendorStockRoutes from "./routes/billing/vendorStock.routes.js";
 import customerBillingRoutes from "./routes/billing/customerBilling.routes.js";
 import customerPaymentRoutes from "./routes/billing/customerPayment.routes.js";
 import companyDetailsRoutes from "./routes/billing/companyDetails.routes.js";
+import companygstNumberRoutes from "./routes/billing/companyGstNumber.routes.js";
 
 // Middlewares
 import { errorHandler } from "./middlewares/error.middleware.js";
@@ -68,7 +69,7 @@ app.use("/api/customer-billing", customerBillingRoutes);
 app.use("/api/customer-payments", customerPaymentRoutes);
 
 app.use("/api/company-details", companyDetailsRoutes);
-
+app.use("/api/company-gst", companygstNumberRoutes);
 // ------------------------------------------------------------------
 // Health Check (optional but recommended)
 // ------------------------------------------------------------------

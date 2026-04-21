@@ -6,32 +6,28 @@ import {
   getCompanyBankById,
   updateCompanyBank,
   deleteCompanyBank,
+  setPrimaryBank,
 } from "../../controllers/billing/companyBankController.js";
 import { protect } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
+router.use(protect);
+
 /* CREATE */
-router.post(
-  "/",
-  protect,
-  uploadBankQR.single("qr_code_image"),
-  createCompanyBank,
-);
+router.post("/", uploadBankQR.single("qr_code_image"), createCompanyBank);
 
 /* READ */
-router.get("/", protect, getCompanyBanks);
-router.get("/:id", protect, getCompanyBankById);
+router.get("/", getCompanyBanks);
+router.get("/:id", getCompanyBankById);
 
 /* UPDATE */
-router.put(
-  "/:id",
-  protect,
-  uploadBankQR.single("qr_code_image"),
-  updateCompanyBank,
-);
+router.put("/:id", uploadBankQR.single("qr_code_image"), updateCompanyBank);
 
 /* DELETE */
-router.delete("/:id", protect, deleteCompanyBank);
+router.delete("/:id", deleteCompanyBank);
+
+/* 🔥 SET PRIMARY */
+router.patch("/:id/set-primary", setPrimaryBank);
 
 export default router;

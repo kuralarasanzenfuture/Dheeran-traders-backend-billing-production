@@ -1,6 +1,7 @@
 
 import { createCompanyBankDetailsTables } from "./database/billing/companyBankDetails.tables.js";
 import { createCompanyDetailsTables } from "./database/billing/companydetails.tables.js";
+import { createCompanyGstNumberTables } from "./database/billing/companygstNumber.tables.js";
 import { createCustomerBillingTables } from "./database/billing/customerBilling.tables.js";
 import { createCustomerTables } from "./database/billing/customers.tables.js";
 import { createEmployeeTables } from "./database/billing/employee.tables.js";
@@ -40,6 +41,8 @@ export const initDatabase = async () => {
     await createCustomerBillingTables(db);
 
     await createCompanyDetailsTables(db);
+
+    await createCompanyGstNumberTables(db);
     
 
     console.log("✅ Database & tables initialized successfully");
