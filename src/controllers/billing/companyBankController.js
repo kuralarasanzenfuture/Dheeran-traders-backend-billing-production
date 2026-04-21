@@ -204,6 +204,95 @@ export const getCompanyBankById = async (req, res) => {
 
 
 /* ================= CREATE ================= */
+// export const createCompanyBank = async (req, res) => {
+//   const conn = await db.getConnection();
+
+//   try {
+//     await conn.beginTransaction();
+
+//     let {
+//       bank_name,
+//       account_name,
+//       account_number,
+//       ifsc_code,
+//       branch,
+//       status = "active",
+//     } = req.body;
+
+//     /* ========= VALIDATION ========= */
+
+//     if (!bank_name || !account_name || !account_number || !ifsc_code) {
+//       throw new Error("All required fields must be provided");
+//     }
+
+//     if (!req.file) {
+//       throw new Error("QR code image required");
+//     }
+
+//     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc_code)) {
+//       throw new Error("Invalid IFSC code");
+//     }
+
+//     if (!["active", "inactive"].includes(status)) {
+//       throw new Error("Invalid status");
+//     }
+
+//     /* ========= DUPLICATE ========= */
+
+//     const [exists] = await conn.query(
+//       `SELECT id FROM company_bank_details 
+//        WHERE account_number=? AND ifsc_code=?`,
+//       [account_number, ifsc_code]
+//     );
+
+//     if (exists.length) throw new Error("Bank already exists");
+
+//     const qr_code_image = `/uploads/bank-qr/${req.file.filename}`;
+
+//     /* ========= PRIMARY LOGIC ========= */
+
+//     const [[row]] = await conn.query(
+//       `SELECT COUNT(*) as count 
+//        FROM company_bank_details 
+//        WHERE is_primary=1 FOR UPDATE`
+//     );
+
+//     const is_primary = row.count === 0 ? 1 : 0;
+
+//     /* ========= INSERT ========= */
+
+//     const [result] = await conn.query(
+//       `INSERT INTO company_bank_details
+//        (bank_name, account_name, account_number, ifsc_code, branch, qr_code_image, status, is_primary)
+//        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+//       [
+//         bank_name,
+//         account_name,
+//         account_number,
+//         ifsc_code,
+//         branch || null,
+//         qr_code_image,
+//         status,
+//         is_primary,
+//       ]
+//     );
+
+//     await conn.commit();
+
+//     res.status(201).json({
+//       message: "Bank created successfully",
+//       id: result.insertId,
+//       is_primary: !!is_primary,
+//     });
+
+//   } catch (err) {
+//     await conn.rollback();
+//     res.status(400).json({ message: err.message });
+//   } finally {
+//     conn.release();
+//   }
+// };
+
 export const createCompanyBank = async (req, res) => {
   const conn = await db.getConnection();
 
@@ -217,6 +306,7 @@ export const createCompanyBank = async (req, res) => {
       ifsc_code,
       branch,
       status = "active",
+      is_primary,
     } = req.body;
 
     /* ========= VALIDATION ========= */
@@ -235,6 +325,14 @@ export const createCompanyBank = async (req, res) => {
 
     if (!["active", "inactive"].includes(status)) {
       throw new Error("Invalid status");
+    }
+
+    /* normalize */
+    is_primary = is_primary === true || is_primary === "true";
+
+    /* ❗ optional rule */
+    if (status === "inactive" && is_primary) {
+      throw new Error("Inactive bank cannot be primary");
     }
 
     /* ========= DUPLICATE ========= */
@@ -257,7 +355,17 @@ export const createCompanyBank = async (req, res) => {
        WHERE is_primary=1 FOR UPDATE`
     );
 
-    const is_primary = row.count === 0 ? 1 : 0;
+    let final_is_primary = 0;
+
+    // 👉 If user sets primary
+    if (is_primary) {
+      await conn.query(`UPDATE company_bank_details SET is_primary=0`);
+      final_is_primary = 1;
+    }
+    // 👉 If no primary exists
+    else if (row.count === 0) {
+      final_is_primary = 1;
+    }
 
     /* ========= INSERT ========= */
 
@@ -273,7 +381,7 @@ export const createCompanyBank = async (req, res) => {
         branch || null,
         qr_code_image,
         status,
-        is_primary,
+        final_is_primary,
       ]
     );
 
@@ -282,7 +390,7 @@ export const createCompanyBank = async (req, res) => {
     res.status(201).json({
       message: "Bank created successfully",
       id: result.insertId,
-      is_primary: !!is_primary,
+      is_primary: !!final_is_primary,
     });
 
   } catch (err) {

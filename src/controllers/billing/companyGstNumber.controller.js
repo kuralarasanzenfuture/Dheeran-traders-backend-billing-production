@@ -4,13 +4,68 @@ const GST_REGEX =
   /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/;
 
 /* ================= CREATE GST ================= */
+// export const createGST = async (req, res) => {
+//   const conn = await db.getConnection();
+
+//   try {
+//     await conn.beginTransaction();
+
+//     let { gst_number  } = req.body;
+
+//     if (!gst_number) throw new Error("GST number required");
+
+//     gst_number = gst_number.toUpperCase().trim();
+
+//     if (!GST_REGEX.test(gst_number)) {
+//       throw new Error("Invalid GST format");
+//     }
+
+//     /* 🔍 Duplicate check */
+//     const [exists] = await conn.query(
+//       `SELECT id FROM company_gst_number WHERE gst_number=?`,
+//       [gst_number],
+//     );
+
+//     if (exists.length) throw new Error("GST already exists");
+
+//     /* 🔒 Lock for default logic */
+//     const [[row]] = await conn.query(
+//       `SELECT COUNT(*) as count
+//        FROM company_gst_number
+//        WHERE is_default=1 FOR UPDATE`,
+//     );
+
+//     let is_default = row.count === 0 ? 1 : 0;
+
+//     const [result] = await conn.query(
+//       `INSERT INTO company_gst_number
+//        (gst_number, is_default)
+//        VALUES (?, ?)`,
+//       [gst_number, is_default],
+//     );
+
+//     await conn.commit();
+
+//     res.status(201).json({
+//       message: "GST created successfully",
+//       id: result.insertId,
+//       is_default: !!is_default,
+//     });
+//   } catch (err) {
+//     await conn.rollback();
+//     res.status(400).json({ message: err.message });
+//   } finally {
+//     conn.release();
+//   }
+// };
+
 export const createGST = async (req, res) => {
   const conn = await db.getConnection();
 
   try {
     await conn.beginTransaction();
 
-    let { gst_number } = req.body;
+    let { gst_number, is_default, is_active } = req.body;
 
     if (!gst_number) throw new Error("GST number required");
 
@@ -20,6 +75,13 @@ export const createGST = async (req, res) => {
       throw new Error("Invalid GST format");
     }
 
+    /* normalize */
+    is_default = is_default === true || is_default === "true";
+    is_active =
+      is_active === undefined
+        ? true
+        : is_active === true || is_active === "true";
+
     /* 🔍 Duplicate check */
     const [exists] = await conn.query(
       `SELECT id FROM company_gst_number WHERE gst_number=?`,
@@ -28,20 +90,35 @@ export const createGST = async (req, res) => {
 
     if (exists.length) throw new Error("GST already exists");
 
-    /* 🔒 Lock for default logic */
+    /* 🔒 Lock table for default logic */
     const [[row]] = await conn.query(
       `SELECT COUNT(*) as count 
        FROM company_gst_number 
        WHERE is_default=1 FOR UPDATE`,
     );
 
-    let is_default = row.count === 0 ? 1 : 0;
+    /* ================= DEFAULT LOGIC ================= */
+
+    let final_is_default = 0;
+
+    // 👉 If user explicitly sets default
+    if (is_default) {
+      // remove existing default
+      await conn.query(`UPDATE company_gst_number SET is_default=0`);
+      final_is_default = 1;
+    }
+    // 👉 If no default exists → auto assign
+    else if (row.count === 0) {
+      final_is_default = 1;
+    }
+
+    /* ================= INSERT ================= */
 
     const [result] = await conn.query(
       `INSERT INTO company_gst_number 
-       (gst_number, is_default) 
-       VALUES (?, ?)`,
-      [gst_number, is_default],
+       (gst_number, is_default, is_active) 
+       VALUES (?, ?, ?)`,
+      [gst_number, final_is_default, is_active ? 1 : 0],
     );
 
     await conn.commit();
@@ -49,7 +126,8 @@ export const createGST = async (req, res) => {
     res.status(201).json({
       message: "GST created successfully",
       id: result.insertId,
-      is_default: !!is_default,
+      is_default: !!final_is_default,
+      is_active,
     });
   } catch (err) {
     await conn.rollback();

@@ -12,7 +12,7 @@ import { protect } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.use(protect);
+// router.use(protect);
 
 /* CREATE */
 router.post("/", uploadBankQR.single("qr_code_image"), createCompanyBank);
