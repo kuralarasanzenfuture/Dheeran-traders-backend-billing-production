@@ -1412,10 +1412,10 @@ export const getLastInvoiceNumber = async (req, res) => {
 
 //     const [rows] = await db.query(
 //       `
-//       SELECT invoice_number 
-//       FROM customerBilling 
+//       SELECT invoice_number
+//       FROM customerBilling
 //       WHERE invoice_number LIKE ?
-//       ORDER BY created_at DESC 
+//       ORDER BY created_at DESC
 //       LIMIT 1
 //       `,
 //       [`INV/${financialYear}/%`],

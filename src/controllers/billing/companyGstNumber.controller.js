@@ -67,15 +67,7 @@ export const createGST = async (req, res) => {
 
     let { gst_number, is_default, is_active } = req.body;
 
-    is_active = Number(is_active);
-
     if (!gst_number) throw new Error("GST number required");
-
-    if (is_active === false) {
-      if (is_default === true) {
-        throw new Error("Cannot set default to false");
-      }
-    }
 
     gst_number = gst_number.toUpperCase().trim();
 
@@ -84,11 +76,23 @@ export const createGST = async (req, res) => {
     }
 
     /* normalize */
-    is_default = is_default === true || is_default === "true";
-    is_active =
-      is_active === undefined
-        ? true
-        : is_active === true || is_active === "true";
+    // is_default = is_default === true || is_default === "true";
+    // is_active =
+    //   is_active === undefined
+    //     ? true
+    //     : is_active === true || is_active === "true";
+
+    const toBoolean = (val) => {
+      return val === true || val === "true" || val === 1 || val === "1";
+    };
+
+    is_default = toBoolean(is_default);
+
+    is_active = is_active === undefined ? true : toBoolean(is_active);
+
+    if (!is_active && is_default) {
+      throw new Error("Inactive GST cannot be set as default");
+    }
 
     /* 🔍 Duplicate check */
     const [exists] = await conn.query(
@@ -146,6 +150,78 @@ export const createGST = async (req, res) => {
 };
 
 /* ================= UPDATE GST ================= */
+// export const updateGST = async (req, res) => {
+//   const conn = await db.getConnection();
+
+//   try {
+//     await conn.beginTransaction();
+
+//     const { id } = req.params;
+//     let { gst_number, is_default, is_active } = req.body;
+
+//     if (!id) throw new Error("ID required");
+
+//     const [[gst]] = await conn.query(
+//       `SELECT * FROM company_gst_number WHERE id=? FOR UPDATE`,
+//       [id],
+//     );
+
+//     if (!gst) throw new Error("GST not found");
+
+//     if (is_active === false && is_default === true) {
+//       throw new Error("Inactive GST cannot be set as default");
+//     }
+
+//     /* Normalize values */
+//     is_default = is_default === true || is_default === "true";
+
+//     /* GST validation */
+//     if (gst_number) {
+//       gst_number = gst_number.toUpperCase().trim();
+
+//       if (!GST_REGEX.test(gst_number)) {
+//         throw new Error("Invalid GST format");
+//       }
+
+//       const [exists] = await conn.query(
+//         `SELECT id FROM company_gst_number
+//          WHERE gst_number=? AND id!=?`,
+//         [gst_number, id],
+//       );
+
+//       if (exists.length) throw new Error("GST already exists");
+//     }
+
+//     /* 🔒 Handle default safely */
+//     if (is_default && !gst.is_default) {
+//       await conn.query(`UPDATE company_gst_number SET is_default=0`);
+//     }
+
+//     await conn.query(
+//       `UPDATE company_gst_number
+//        SET gst_number=?,
+//            is_default=?,
+//            is_active=?
+//        WHERE id=?`,
+//       [
+//         gst_number ?? gst.gst_number,
+//         is_default ? 1 : gst.is_default,
+//         is_active ?? gst.is_active,
+//         id,
+//       ],
+//     );
+
+//     await conn.commit();
+
+//     res.json({ message: "GST updated successfully" });
+//   } catch (err) {
+//     await conn.rollback();
+//     res.status(400).json({ message: err.message });
+//   } finally {
+//     conn.release();
+//   }
+// };
+
 export const updateGST = async (req, res) => {
   const conn = await db.getConnection();
 
@@ -164,16 +240,23 @@ export const updateGST = async (req, res) => {
 
     if (!gst) throw new Error("GST not found");
 
-    if (is_active === false) {
-      if (is_default === true) {
-        throw new Error("Cannot set default to false");
-      }
+    /* ✅ normalize (supports true, "true", 1, "1") */
+    const toBoolean = (v) => [true, "true", 1, "1"].includes(v);
+
+    if (is_default !== undefined) {
+      is_default = toBoolean(is_default);
     }
 
-    /* Normalize values */
-    is_default = is_default === true || is_default === "true";
+    if (is_active !== undefined) {
+      is_active = toBoolean(is_active);
+    }
 
-    /* GST validation */
+    /* ❗ validation AFTER normalize */
+    if (is_active === false && is_default === true) {
+      throw new Error("Inactive GST cannot be set as default");
+    }
+
+    /* ========= GST VALIDATION ========= */
     if (gst_number) {
       gst_number = gst_number.toUpperCase().trim();
 
@@ -190,10 +273,24 @@ export const updateGST = async (req, res) => {
       if (exists.length) throw new Error("GST already exists");
     }
 
-    /* 🔒 Handle default safely */
-    if (is_default && !gst.is_default) {
+    /* ========= DEFAULT LOGIC ========= */
+
+    if (is_default === true && !gst.is_default) {
       await conn.query(`UPDATE company_gst_number SET is_default=0`);
     }
+
+    /* ❗ prevent removing last default */
+    if (is_default === false && gst.is_default) {
+      const [[count]] = await conn.query(
+        `SELECT COUNT(*) as count FROM company_gst_number WHERE is_default=1`,
+      );
+
+      if (count.count === 1) {
+        throw new Error("At least one GST must be default");
+      }
+    }
+
+    /* ========= UPDATE ========= */
 
     await conn.query(
       `UPDATE company_gst_number
@@ -203,8 +300,8 @@ export const updateGST = async (req, res) => {
        WHERE id=?`,
       [
         gst_number ?? gst.gst_number,
-        is_default ? 1 : gst.is_default,
-        is_active ?? gst.is_active,
+        is_default !== undefined ? (is_default ? 1 : 0) : gst.is_default,
+        is_active !== undefined ? (is_active ? 1 : 0) : gst.is_active,
         id,
       ],
     );
