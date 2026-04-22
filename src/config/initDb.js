@@ -8,6 +8,7 @@ import { createCustomerTables } from "./database/billing/customers.tables.js";
 import { createEmployeeTables } from "./database/billing/employee.tables.js";
 import { createMasterTables } from "./database/billing/master.tables.js";
 import { createProductTables } from "./database/billing/product.tables.js";
+import { createReturnBillingTables } from "./database/billing/return.tables.js";
 import { createUserTables } from "./database/billing/user.tables.js";
 import { createVendorTables } from "./database/billing/vendor.tables.js";
 import { createVendorStocksTables } from "./database/billing/vendorStocks.tables.js";
@@ -44,6 +45,8 @@ export const initDatabase = async () => {
     await createCompanyDetailsTables(db);
 
     await createCompanyGstNumberTables(db);
+
+    await createReturnBillingTables(db);
     
     await seed(db);
 
