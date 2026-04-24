@@ -123,7 +123,8 @@ export const getReturnById = async (req, res) => {
         rp.*,
         p.product_name,
         p.brand,
-        p.category
+        p.category,
+        p.quantity
       FROM customerBillingReturnsProducts rp
       JOIN products p ON p.id = rp.product_id
       WHERE rp.return_id=?`,
