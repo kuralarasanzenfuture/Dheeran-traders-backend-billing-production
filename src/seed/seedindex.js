@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { seedCompanyBank } from "./companybankdetails.js";
 import { seedCompanyDetails } from "./companyDetails.js";
 import { seedCustomers } from "./customer.js";
 import { seedEmployees } from "./employee.js";
@@ -15,4 +16,5 @@ export const seed = async () => {
   await seedCustomers(db);
   await seedVendors(db);
   await seedCompanyDetails(db);
+  await seedCompanyBank(db);
 };

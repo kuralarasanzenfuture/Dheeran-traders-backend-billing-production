@@ -26,7 +26,7 @@ import db from "../../../config/db.js";
 //     }
 
 //     const [rows] = await db.query(
-//       `SELECT 
+//       `SELECT
 //         r.*,
 //         b.invoice_number,
 //         b.customer_name
@@ -46,16 +46,54 @@ import db from "../../../config/db.js";
 
 export const getAllReturns = async (req, res) => {
   try {
-    const [rows] = await db.query(
-      `SELECT 
-        r.*,
-        b.invoice_number,
-        b.customer_name,
-        b.phone_number
-      FROM customerBillingReturns r
-      JOIN customerBilling b ON b.id = r.billing_id
-      ORDER BY r.id DESC`
-    );
+    // const [rows] = await db.query(
+    //   `SELECT
+    //     r.*,
+    //     b.invoice_number,
+    //     b.customer_name,
+    //     b.phone_number
+    //   FROM customerBillingReturns r
+    //   JOIN customerBilling b ON b.id = r.billing_id
+    //   ORDER BY r.id DESC`
+    // );
+
+    const [rows] = await db.query(`
+  SELECT
+    r.*,
+    b.invoice_number,
+    b.customer_name,
+    b.phone_number,
+
+    COALESCE(SUM(rp.return_quantity), 0) AS total_return_qty
+
+  FROM customerBillingReturns r
+  JOIN customerBilling b ON b.id = r.billing_id
+  LEFT JOIN customerBillingReturnsProducts rp 
+    ON rp.return_id = r.id
+
+  GROUP BY r.id
+  ORDER BY r.id DESC
+`);
+
+    //     const [rows] = await db.query(`
+    // SELECT
+    //   r.id,
+    //   r.billing_id,
+    //   r.return_number,
+
+    //   DATE_FORMAT(r.return_date, '%Y-%m-%d') AS return_date,  -- 🔥 FIX
+
+    //   DATE_FORMAT(CONVERT_TZ(r.created_at, '+00:00', '+05:30'), '%Y-%m-%d %H:%i:%s') AS created_at,
+    //   DATE_FORMAT(CONVERT_TZ(r.updated_at, '+00:00', '+05:30'), '%Y-%m-%d %H:%i:%s') AS updated_at,
+
+    //   b.invoice_number,
+    //   b.customer_name,
+    //   b.phone_number
+
+    // FROM customerBillingReturns r
+    // JOIN customerBilling b ON b.id = r.billing_id
+    // ORDER BY r.id DESC
+    // `);
 
     res.json({
       count: rows.length,
@@ -73,7 +111,7 @@ export const getReturnById = async (req, res) => {
 
     const [[returnData]] = await db.query(
       `SELECT * FROM customerBillingReturns WHERE id=?`,
-      [id]
+      [id],
     );
 
     if (!returnData) {
@@ -89,7 +127,7 @@ export const getReturnById = async (req, res) => {
       FROM customerBillingReturnsProducts rp
       JOIN products p ON p.id = rp.product_id
       WHERE rp.return_id=?`,
-      [id]
+      [id],
     );
 
     res.json({
@@ -109,7 +147,7 @@ export const getReturnsByBillingId = async (req, res) => {
 
     const [returns] = await db.query(
       `SELECT * FROM customerBillingReturns WHERE billing_id=? ORDER BY id DESC`,
-      [billing_id]
+      [billing_id],
     );
 
     res.json({ data: returns });
@@ -132,7 +170,7 @@ export const getReturnSummary = async (req, res) => {
         (cbp.quantity - COALESCE(cbp.returned_quantity,0)) AS remaining_qty
       FROM customerBillingProducts cbp
       WHERE cbp.billing_id=?`,
-      [billing_id]
+      [billing_id],
     );
 
     res.json({ data: rows });
@@ -154,7 +192,7 @@ export const getReturnWithInvoice = async (req, res) => {
       FROM customerBillingReturns r
       JOIN customerBilling b ON b.id = r.billing_id
       WHERE r.id=?`,
-      [id]
+      [id],
     );
 
     if (!data) {

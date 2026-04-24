@@ -653,6 +653,7 @@ export const getAllCustomerBillings = async (req, res) => {
     const [products] = await db.query(
       `
       SELECT
+        id, 
         billing_id,
         product_id,
         product_name,
