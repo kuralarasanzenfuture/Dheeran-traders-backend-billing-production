@@ -676,7 +676,9 @@ export const getAllCustomerBillings = async (req, res) => {
         quantity,
         rate,
         final_rate,
-        total
+        total,
+        returned_quantity,
+        (quantity - COALESCE(returned_quantity, 0)) AS remaining_quantity
       FROM customerBillingProducts
       WHERE billing_id IN (?)
     `,
@@ -745,7 +747,9 @@ export const getCustomerBillingById = async (req, res) => {
         quantity,
         rate,
         final_rate,
-        total
+        total,
+        returned_quantity,
+        (quantity - COALESCE(returned_quantity, 0)) AS remaining_quantity
       FROM customerBillingProducts
       WHERE billing_id = ?
     `,
@@ -832,7 +836,9 @@ export const getCustomerProductFullData = async (req, res) => {
         cbp.quantity,
         cbp.rate,
         cbp.final_rate,
-        cbp.total
+        cbp.total,
+        cbp.returned_quantity,
+        (cbp.quantity - COALESCE(cbp.returned_quantity, 0)) AS remaining_quantity
 
       FROM customerBillingProducts cbp
       JOIN customerBilling cb ON cbp.billing_id = cb.id
