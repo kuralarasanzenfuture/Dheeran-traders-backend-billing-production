@@ -130,9 +130,9 @@ export const createCustomerReturn = async (req, res) => {
       (Number(bill.balance_due) - totalReturnAmount).toFixed(2),
     );
 
-    if (newBalance < 0) {
-      throw new Error("Return exceeds balance");
-    }
+    // if (newBalance < 0) {
+    //   throw new Error("Return exceeds balance");
+    // }
 
     /* RETURN STATUS */
     const [rows] = await conn.query(

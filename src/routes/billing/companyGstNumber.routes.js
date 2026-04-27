@@ -5,7 +5,7 @@ import {
   updateGST,
   deleteGST,
   setDefaultGST
-} from "../../controllers/billing/companygstNumber.controller.js";
+} from "../../controllers/billing/companyGstNumber.controller.js";
 
 const router = express.Router();
 

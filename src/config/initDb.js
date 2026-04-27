@@ -1,5 +1,3 @@
-
-import { seed } from "../seed/seedindex.js";
 import { createCompanyBankDetailsTables } from "./database/billing/companyBankDetails.tables.js";
 import { createCompanyDetailsTables } from "./database/billing/companydetails.tables.js";
 import { createCompanyGstNumberTables } from "./database/billing/companygstNumber.tables.js";
@@ -47,8 +45,6 @@ export const initDatabase = async () => {
     await createCompanyGstNumberTables(db);
 
     await createReturnBillingTables(db);
-    
-    await seed(db);
 
     console.log("✅ Database & tables initialized successfully");
   } catch (error) {
