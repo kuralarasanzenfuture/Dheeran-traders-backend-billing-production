@@ -952,25 +952,55 @@ export const customerWiseReport = async (req, res) => {
 
 export const getPendingBills = async (req, res) => {
   try {
+    // const [billings] = await db.query(`
+    //   SELECT
+    //     cb.id,
+    //     cb.invoice_number,
+    //     cb.invoice_date,
+
+    //     CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) AS customer_name,
+    //     c.phone AS phone_number,
+
+    //     cb.grand_total,
+    //     cb.advance_paid,
+    //     cb.balance_due,
+
+    //     cb.created_at
+    //   FROM customerBilling cb
+    //   JOIN customers c ON c.id = cb.customer_id
+    //   WHERE cb.balance_due > 0
+    //   ORDER BY cb.created_at DESC
+    // `);
+
     const [billings] = await db.query(`
-      SELECT
-        cb.id,
-        cb.invoice_number,
-        cb.invoice_date,
+  SELECT
+    cb.id,
+    cb.invoice_number,
+    cb.invoice_date,
 
-        CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) AS customer_name,
-        c.phone AS phone_number,
+    CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) AS customer_name,
+    c.phone AS phone_number,
 
-        cb.grand_total,
-        cb.advance_paid,
-        cb.balance_due,
+    cb.grand_total,
+    cb.advance_paid,
 
-        cb.created_at
-      FROM customerBilling cb
-      JOIN customers c ON c.id = cb.customer_id
-      WHERE cb.balance_due > 0
-      ORDER BY cb.created_at DESC
-    `);
+    -- 🔥 TOTAL PAID (advance + payments)
+    cb.advance_paid + COALESCE(SUM(p.total_amount), 0) AS total_paid_amount,
+
+    cb.balance_due,
+    cb.created_at
+
+  FROM customerBilling cb
+  JOIN customers c ON c.id = cb.customer_id
+
+  LEFT JOIN customerBillingPayment p 
+    ON p.billing_id = cb.id
+
+  WHERE cb.balance_due > 0
+
+  GROUP BY cb.id
+  ORDER BY cb.created_at DESC
+`);
 
     res.json(billings);
   } catch (err) {
